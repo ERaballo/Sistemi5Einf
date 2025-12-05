@@ -1,0 +1,96 @@
+import java.io.*;
+import java.net.*;
+
+public class CalcolatriceServer {
+    private static final int PORTA = 8844;
+
+    public static void main(String[] args) {
+        int contatoreOperazioni = 0;
+
+        System.out.println("=== SERVER CALCOLATRICE REMOTA ===");
+
+        try (ServerSocket serverSocket = new ServerSocket(PORTA)) {
+            System.out.println("Server avviato sulla porta " + PORTA);
+            System.out.println("In attesa di connessione...");
+
+            try (Socket clientSocket = serverSocket.accept();
+                 BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                 PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
+
+                System.out.println("Client connesso.");
+
+                String richiesta;
+
+                while ((richiesta = in.readLine()) != null) {
+
+                    System.out.println("Richiesta ricevuta dal client: " + richiesta);
+
+                    // Comando di chiusura
+                    if (richiesta.equalsIgnoreCase("QUIT")) {
+                        out.println("CHIUSURA: Operazioni eseguite: " + contatoreOperazioni + ". Arrivederci!");
+                        System.out.println("Client ha richiesto la chiusura. Totale operazioni: " + contatoreOperazioni);
+                        break;
+                    }
+
+                    // Elaborazione della richiesta
+                    String risposta = elaboraRichiesta(richiesta);
+
+                    if (risposta.startsWith("RISULTATO")) {
+                        contatoreOperazioni++;
+                        System.out.println("Operazione #" + contatoreOperazioni + " → " + risposta);
+                    } else {
+                        System.out.println("Errore elaborazione → " + risposta);
+                    }
+
+                    out.println(risposta);
+                }
+
+            }
+
+        } catch (IOException e) {
+            System.err.println("Errore Server: " + e.getMessage());
+        }
+
+        System.out.println("Server terminato.");
+    }
+
+
+    private static String elaboraRichiesta(String richiesta) {
+        try {
+            String[] parti = richiesta.trim().split(" ");
+
+            if (parti.length != 3)
+                return "ERRORE: Formato non valido. Usa: NUMERO OPERAZIONE NUMERO";
+
+            double num1 = Double.parseDouble(parti[0]);
+            String operazione = parti[1];
+            double num2 = Double.parseDouble(parti[2]);
+
+            double risultato;
+
+            switch (operazione) {
+                case "+":
+                    risultato = num1 + num2;
+                    break;
+                case "-":
+                    risultato = num1 - num2;
+                    break;
+                case "*":
+                    risultato = num1 * num2;
+                    break;
+                case "/":
+                    if (num2 == 0)
+                        return "ERRORE: Divisione per zero non consentita";
+                    risultato = num1 / num2;
+                    break;
+                default:
+                    return "ERRORE: Operazione non supportata";
+            }
+
+            return "RISULTATO: " + risultato;
+
+        } catch (NumberFormatException e) {
+            return "ERRORE: Formato numerico non valido.";
+        }
+    }
+}
